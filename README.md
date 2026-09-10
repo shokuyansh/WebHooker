@@ -11,9 +11,9 @@ Project is on a webhook delivery platform.
 | Method      | Routes           | Description  |
 | ------------- |:------------- | ----- |
 | GET      | /v1/healthcheckup | End point for checking health status of server |
-| POST | /v1/register      | End point for registering a webhook    |
+| POST | /v1/webhook      | End point for registering a webhook    |
 |GET | /v1/webhook/:id  | End point for retrieving a particular webhook |
-|PATCH | /v1/webhook     | End point for updating a specific webhook |
+|PATCH | /v1/webhook/:id     | End point for updating a specific webhook |
 |DELETE | /v1/webhook/:id | End point for deleting a particular webhook |
 
 

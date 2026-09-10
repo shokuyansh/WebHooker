@@ -84,12 +84,12 @@ func (m WebHookModel) Get(id int) (*WebHook, error) {
 }
 
 func (m WebHookModel) Update(webhook *WebHook) error {
-	query := `update users set
+	query := `update webhooks set
 	callback_url=$1,events=$2,version=version+1
 	where id=$3 and version=$4
 	returning version
 	`
-	args := []any{webhook.CallbackURL, webhook.Events, webhook.ClientID, webhook.Version}
+	args := []any{webhook.CallbackURL, pq.Array(webhook.Events), webhook.ClientID, webhook.Version}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&webhook.Version)

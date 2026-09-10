@@ -73,10 +73,14 @@ func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Requ
 		app.notFoundErrorResponse(w, r)
 		return
 	}
+	v := validator.New()
+
 	webhook, err := app.models.Webhooks.Get(id)
 	if err != nil {
 		switch {
-		// TODO: Add an error check for duplicate url case
+		case errors.Is(err, data.ErrDuplicateURL):
+			v.AddError("url", "this url already exists")
+			app.failedValidationResponse(w, r, v.Errors)
 		case errors.Is(err, data.ErrRecordNotFound):
 			app.notFoundErrorResponse(w, r)
 		default:
@@ -100,7 +104,6 @@ func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Requ
 	if input.EventsRegistered != nil {
 		webhook.Events = input.EventsRegistered
 	}
-	v := validator.New()
 	if data.ValidateWebhook(v, webhook); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
@@ -108,6 +111,9 @@ func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Requ
 	err = app.models.Webhooks.Update(webhook)
 	if err != nil {
 		switch {
+		case errors.Is(err, data.ErrDuplicateURL):
+			v.AddError("url", "this url already exists")
+			app.failedValidationResponse(w, r, v.Errors)
 		case errors.Is(err, data.ErrEditConflict):
 			app.editConflictResponse(w, r)
 		default:
