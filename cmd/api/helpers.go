@@ -6,10 +6,22 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 type envelope map[string]any
+
+func (app *application) readIDParam(r *http.Request) (int, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+	id, err := strconv.Atoi(params.ByName("id"))
+	if err != nil || id < 1 {
+		return 0, errors.New("invalid id parameter")
+	}
+	return id, nil
+}
 
 func (app *application) writeJSON(w http.ResponseWriter, msg any, statusCode int, header http.Header) error {
 	jsonValue, err := json.MarshalIndent(msg, "", "\t")

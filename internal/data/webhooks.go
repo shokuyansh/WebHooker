@@ -1,10 +1,17 @@
 package data
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/shokuyansh/Webhooker/internal/validator"
+)
+
+var (
+	ErrDuplicateURL = errors.New("duplicate url")
 )
 
 type WebHook struct {
@@ -16,14 +23,110 @@ type WebHook struct {
 }
 
 type WebHookModel struct {
-	db *sql.DB
+	DB *sql.DB
 }
 
 func ValidateWebhook(v *validator.Validator, webhook *WebHook) {
 	v.Check(len(webhook.CallbackURL) != 0, "callback_url", "must be provided")
 	v.Check(validator.ValidURL(webhook.CallbackURL), "callback_url", "Not a valid url")
 
-	v.Check(len(webhook.Events) != 0, "events", "must be provided")
+	v.Check(webhook.Events != nil, "events", "must be provided")
 	v.Check(len(webhook.Events) >= 1, "events", "registered events should be atleast 1")
+	v.Check(len(webhook.Events) <= 5, "events", "must not contain more than 5 events")
+	v.Check(validator.Unique(webhook.Events), "events", "must not contain duplicate values")
+}
 
+func (m WebHookModel) Insert(webhook *WebHook) error {
+	stmt := `Insert into webhooks(callback_url,events)
+	values($1,$2)
+	returning id,created_at,version`
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := m.DB.QueryRowContext(ctx, stmt, webhook.CallbackURL, pq.Array(webhook.Events)).Scan(
+		&webhook.ClientID, &webhook.CreatedAT, &webhook.Version)
+	if err != nil {
+		var pqErr *pq.Error
+		switch {
+		case errors.As(err, &pqErr) &&
+			pqErr.Code == "23505" &&
+			pqErr.Constraint == "webhooks_callback_url_key":
+			return ErrDuplicateURL
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
+func (m WebHookModel) Get(id int) (*WebHook, error) {
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+	query := `select id,callback_url,events,created_at,version from webhooks
+	where id=$1`
+	var webhook WebHook
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(
+		&webhook.ClientID,
+		&webhook.CallbackURL,
+		pq.Array(&webhook.Events),
+		&webhook.CreatedAT,
+		&webhook.Version,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrRecordNotFound
+		}
+		return nil, err
+	}
+	return &webhook, nil
+}
+
+func (m WebHookModel) Update(webhook *WebHook) error {
+	query := `update users set
+	callback_url=$1,events=$2,version=version+1
+	where id=$3 and version=$4
+	returning version
+	`
+	args := []any{webhook.CallbackURL, webhook.Events, webhook.ClientID, webhook.Version}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&webhook.Version)
+	if err != nil {
+		var pqErr *pq.Error
+		switch {
+		case errors.As(err, &pqErr) &&
+			pqErr.Code == "23505" &&
+			pqErr.Constraint == "webhooks_callback_url_key":
+			return ErrDuplicateURL
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
+func (m WebHookModel) Delete(id int) error {
+	if id < 1 {
+		return ErrRecordNotFound
+	}
+	query := `delete from webhooks
+	where id=$1`
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	result, err := m.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
+	return nil
 }

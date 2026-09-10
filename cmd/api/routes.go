@@ -13,7 +13,10 @@ func (app *application) routes() http.Handler {
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedErrorResponse)
 
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheckup", app.healthcheckup)
-	router.HandlerFunc(http.MethodPost, "/v1/register", app.registerWebhookPost)
+	router.HandlerFunc(http.MethodPost, "/v1/register", app.registerWebhookHandlerPost)
+	router.HandlerFunc(http.MethodGet, "/v1/webhook/:id", app.getWebhookHandler)
+	router.HandlerFunc(http.MethodPatch, "/v1/webhook", app.updateWebhookHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/webhook/:id", app.deleteWebhookHandler)
 
-	return router
+	return app.recoverPanic(router)
 }
