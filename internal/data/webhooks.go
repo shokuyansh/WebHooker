@@ -15,9 +15,11 @@ var (
 )
 
 type WebHook struct {
-	ClientID    int64     `json:"id"`
+	ID          int64     `json:"id"`
+	ProjectID   int64     `json:"project_id"`
 	CallbackURL string    `json:"callback_url"`
 	Events      []string  `json:"events"`
+	Activated   bool      `json:"activated"`
 	CreatedAT   time.Time `json:"-"`
 	Version     int64     `json:"version"`
 }
@@ -37,13 +39,13 @@ func ValidateWebhook(v *validator.Validator, webhook *WebHook) {
 }
 
 func (m WebHookModel) Insert(webhook *WebHook) error {
-	stmt := `Insert into webhooks(callback_url,events)
-	values($1,$2)
+	stmt := `Insert into webhooks(project_id,callback_url,events)
+	values($1,$2,$3)
 	returning id,created_at,version`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	err := m.DB.QueryRowContext(ctx, stmt, webhook.CallbackURL, pq.Array(webhook.Events)).Scan(
-		&webhook.ClientID, &webhook.CreatedAT, &webhook.Version)
+	err := m.DB.QueryRowContext(ctx, stmt, webhook.ProjectID, webhook.CallbackURL, pq.Array(webhook.Events)).Scan(
+		&webhook.ID, &webhook.CreatedAT, &webhook.Version)
 	if err != nil {
 		var pqErr *pq.Error
 		switch {
@@ -62,15 +64,17 @@ func (m WebHookModel) Get(id int) (*WebHook, error) {
 	if id < 1 {
 		return nil, ErrRecordNotFound
 	}
-	query := `select id,callback_url,events,created_at,version from webhooks
+	query := `select id,project_id,callback_url,events,activated,created_at,version from webhooks
 	where id=$1`
 	var webhook WebHook
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	err := m.DB.QueryRowContext(ctx, query, id).Scan(
-		&webhook.ClientID,
+		&webhook.ID,
+		&webhook.ProjectID,
 		&webhook.CallbackURL,
 		pq.Array(&webhook.Events),
+		&webhook.Activated,
 		&webhook.CreatedAT,
 		&webhook.Version,
 	)
@@ -85,11 +89,11 @@ func (m WebHookModel) Get(id int) (*WebHook, error) {
 
 func (m WebHookModel) Update(webhook *WebHook) error {
 	query := `update webhooks set
-	callback_url=$1,events=$2,version=version+1
-	where id=$3 and version=$4
+	project_id=$1,callback_url=$2,events=$3,activated=$4,version=version+1
+	where id=$5 and version=$6
 	returning version
 	`
-	args := []any{webhook.CallbackURL, pq.Array(webhook.Events), webhook.ClientID, webhook.Version}
+	args := []any{webhook.ProjectID, webhook.CallbackURL, pq.Array(webhook.Events), webhook.Activated, webhook.ID, webhook.Version}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&webhook.Version)

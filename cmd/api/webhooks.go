@@ -20,6 +20,7 @@ func (app *application) registerWebhookHandlerPost(w http.ResponseWriter, r *htt
 	}
 
 	webhook := &data.WebHook{
+		ProjectID:   1,
 		CallbackURL: input.CallbackUrl,
 		Events:      input.EventsRegistered,
 	}
