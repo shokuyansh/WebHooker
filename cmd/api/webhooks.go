@@ -150,8 +150,14 @@ func (app *application) deleteWebhookHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (app *application) listWebhookHandler(w http.ResponseWriter, r *http.Request) {
-	webhooks, err := app.models.Webhooks.GetAll()
+func (app *application) listWebhooksHandler(w http.ResponseWriter, r *http.Request) {
+	project_id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundErrorResponse(w, r)
+		return
+	}
+
+	webhooks, err := app.models.Webhooks.GetAllForProject(int64(project_id))
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return

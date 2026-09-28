@@ -135,23 +135,24 @@ func (m WebHookModel) Delete(id int) error {
 	return nil
 }
 
-func (m WebHookModel) GetAll() ([]*WebHook, error) {
-	query := `select id,project_id,callback_url,events,activated,created_at,version from webhooks`
+func (m WebHookModel) GetAllForProject(project_id int64) ([]*WebHook, error) {
+	query := `select id,callback_url,events,activated,created_at,version from webhooks
+	where project_id=$1`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	res, err := m.DB.QueryContext(ctx, query)
+	res, err := m.DB.QueryContext(ctx, query, project_id)
 
 	if err != nil {
 		return nil, err
 	}
+
 	var results []*WebHook
 	for res.Next() {
 		var webhook WebHook
 		err := res.Scan(
 			&webhook.ID,
-			&webhook.ProjectID,
 			&webhook.CallbackURL,
 			pq.Array(&webhook.Events),
 			&webhook.Activated,

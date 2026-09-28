@@ -15,8 +15,8 @@ Project is on a webhook delivery platform.
 |GET | /v1/webhook/:id  | End point for retrieving a particular webhook |
 |PATCH | /v1/webhook/:id     | End point for updating a specific webhook |
 |DELETE | /v1/webhook/:id | End point for deleting a particular webhook |
+|GET | /v1/webhooks/:id  | List all webhooks under a project |
+|GET | /v1/project/:id  | Details of a particular project |
+|POST | /v1/project  | Create a new project |
 
 
-// Personal notes
-// I have current taken client id as serial in webhook table. I am little unsure about the table structure right now, but i am going with it. 
-// If required I'll change the structure what's the harm.

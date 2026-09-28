@@ -62,11 +62,11 @@ Currently webhook registration uses a hardcoded `project_id = 1`.
 
 Replace this with an actual project model.
 
-- [ ] Create `projects` table
-- [ ] Create project model
-- [ ] Create project
-- [ ] Retrieve project
-- [ ] Associate webhooks with projects
+- [X] Create `projects` table
+- [X] Create project model
+- [X] Create project
+- [X] Retrieve project
+- [X] Associate webhooks with projects
 - [ ] Scope webhook operations by project
 
 Target relationship:
