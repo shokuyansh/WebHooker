@@ -134,3 +134,37 @@ func (m WebHookModel) Delete(id int) error {
 	}
 	return nil
 }
+
+func (m WebHookModel) GetAll() ([]*WebHook, error) {
+	query := `select id,project_id,callback_url,events,activated,created_at,version from webhooks`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	res, err := m.DB.QueryContext(ctx, query)
+
+	if err != nil {
+		return nil, err
+	}
+	var results []*WebHook
+	for res.Next() {
+		var webhook WebHook
+		err := res.Scan(
+			&webhook.ID,
+			&webhook.ProjectID,
+			&webhook.CallbackURL,
+			pq.Array(&webhook.Events),
+			&webhook.Activated,
+			&webhook.CreatedAT,
+			&webhook.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, &webhook)
+	}
+	if err = res.Err(); err != nil {
+		return nil, err
+	}
+	return results, err
+}

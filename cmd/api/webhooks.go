@@ -149,3 +149,16 @@ func (app *application) deleteWebhookHandler(w http.ResponseWriter, r *http.Requ
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) listWebhookHandler(w http.ResponseWriter, r *http.Request) {
+	webhooks, err := app.models.Webhooks.GetAll()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, envelope{"webhooks": webhooks}, http.StatusOK, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
