@@ -10,6 +10,7 @@ import (
 
 func (app *application) registerWebhookHandlerPost(w http.ResponseWriter, r *http.Request) {
 	var input struct {
+		ProjectID        int64    `json:"project_id"`
 		CallbackUrl      string   `json:"callback_url"`
 		EventsRegistered []string `json:"events_registered"`
 	}
@@ -20,7 +21,7 @@ func (app *application) registerWebhookHandlerPost(w http.ResponseWriter, r *htt
 	}
 
 	webhook := &data.WebHook{
-		ProjectID:   1,
+		ProjectID:   input.ProjectID,
 		CallbackURL: input.CallbackUrl,
 		Events:      input.EventsRegistered,
 	}
@@ -47,12 +48,12 @@ func (app *application) registerWebhookHandlerPost(w http.ResponseWriter, r *htt
 }
 
 func (app *application) getWebhookHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
+	project_id, webhook_id, err := app.readIDParams(r)
 	if err != nil {
 		app.notFoundErrorResponse(w, r)
 		return
 	}
-	webhook, err := app.models.Webhooks.Get(id)
+	webhook, err := app.models.Webhooks.Get(project_id, webhook_id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -69,14 +70,14 @@ func (app *application) getWebhookHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
+	project_id, webhook_id, err := app.readIDParams(r)
 	if err != nil {
 		app.notFoundErrorResponse(w, r)
 		return
 	}
 	v := validator.New()
 
-	webhook, err := app.models.Webhooks.Get(id)
+	webhook, err := app.models.Webhooks.Get(project_id, webhook_id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrDuplicateURL):
@@ -129,12 +130,12 @@ func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (app *application) deleteWebhookHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
+	project_id, webhook_id, err := app.readIDParams(r)
 	if err != nil {
 		app.notFoundErrorResponse(w, r)
 		return
 	}
-	err = app.models.Webhooks.Delete(id)
+	err = app.models.Webhooks.Delete(int64(project_id), int64(webhook_id))
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):

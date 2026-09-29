@@ -24,6 +24,19 @@ func (app *application) readIDParam(r *http.Request) (int, error) {
 	return id, nil
 }
 
+func (app *application) readIDParams(r *http.Request) (int, int, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+	project_id, err := strconv.Atoi(params.ByName("project_id"))
+	if err != nil || project_id < 1 {
+		return 0, 0, errors.New("invalid id parameter")
+	}
+	webhook_id, err := strconv.Atoi(params.ByName("webhook_id"))
+	if err != nil || webhook_id < 1 {
+		return 0, 0, errors.New("invalid id parameter")
+	}
+	return project_id, webhook_id, nil
+}
+
 func (app *application) writeJSON(w http.ResponseWriter, msg any, statusCode int, header http.Header) error {
 	jsonValue, err := json.MarshalIndent(msg, "", "\t")
 	if err != nil {

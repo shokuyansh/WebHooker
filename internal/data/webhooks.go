@@ -29,6 +29,8 @@ type WebHookModel struct {
 }
 
 func ValidateWebhook(v *validator.Validator, webhook *WebHook) {
+	v.Check(webhook.ProjectID > 0, "project_id", "must be greater than 0")
+
 	v.Check(len(webhook.CallbackURL) != 0, "callback_url", "must be provided")
 	v.Check(validator.ValidURL(webhook.CallbackURL), "callback_url", "Not a valid url")
 
@@ -60,16 +62,16 @@ func (m WebHookModel) Insert(webhook *WebHook) error {
 	return nil
 }
 
-func (m WebHookModel) Get(id int) (*WebHook, error) {
-	if id < 1 {
+func (m WebHookModel) Get(project_id, webhook_id int) (*WebHook, error) {
+	if project_id < 1 || webhook_id < 1 {
 		return nil, ErrRecordNotFound
 	}
 	query := `select id,project_id,callback_url,events,activated,created_at,version from webhooks
-	where id=$1`
+	where project_id=$1 and id = $2`
 	var webhook WebHook
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	err := m.DB.QueryRowContext(ctx, query, id).Scan(
+	err := m.DB.QueryRowContext(ctx, query, project_id, webhook_id).Scan(
 		&webhook.ID,
 		&webhook.ProjectID,
 		&webhook.CallbackURL,
@@ -89,11 +91,11 @@ func (m WebHookModel) Get(id int) (*WebHook, error) {
 
 func (m WebHookModel) Update(webhook *WebHook) error {
 	query := `update webhooks set
-	project_id=$1,callback_url=$2,events=$3,activated=$4,version=version+1
-	where id=$5 and version=$6
+	callback_url=$1,events=$2,version=version+1
+	where id=$3 and project_id=$4 and version=$5
 	returning version
 	`
-	args := []any{webhook.ProjectID, webhook.CallbackURL, pq.Array(webhook.Events), webhook.Activated, webhook.ID, webhook.Version}
+	args := []any{webhook.CallbackURL, pq.Array(webhook.Events), webhook.ID, webhook.ProjectID, webhook.Version}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&webhook.Version)
@@ -113,15 +115,15 @@ func (m WebHookModel) Update(webhook *WebHook) error {
 	return nil
 }
 
-func (m WebHookModel) Delete(id int) error {
-	if id < 1 {
+func (m WebHookModel) Delete(project_id, webhook_id int64) error {
+	if project_id < 1 || webhook_id < 1 {
 		return ErrRecordNotFound
 	}
 	query := `delete from webhooks
-	where id=$1`
+	where id=$1 and project_id=$2`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	result, err := m.DB.ExecContext(ctx, query, id)
+	result, err := m.DB.ExecContext(ctx, query, webhook_id, project_id)
 	if err != nil {
 		return err
 	}
@@ -136,7 +138,7 @@ func (m WebHookModel) Delete(id int) error {
 }
 
 func (m WebHookModel) GetAllForProject(project_id int64) ([]*WebHook, error) {
-	query := `select id,callback_url,events,activated,created_at,version from webhooks
+	query := `select id,project_id,callback_url,events,activated,created_at,version from webhooks
 	where project_id=$1`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -148,11 +150,14 @@ func (m WebHookModel) GetAllForProject(project_id int64) ([]*WebHook, error) {
 		return nil, err
 	}
 
+	defer res.Close()
+
 	var results []*WebHook
 	for res.Next() {
 		var webhook WebHook
 		err := res.Scan(
 			&webhook.ID,
+			&webhook.ProjectID,
 			&webhook.CallbackURL,
 			pq.Array(&webhook.Events),
 			&webhook.Activated,

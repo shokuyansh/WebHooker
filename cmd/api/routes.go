@@ -14,11 +14,11 @@ func (app *application) routes() http.Handler {
 
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheckup", app.healthcheckup)
 	router.HandlerFunc(http.MethodPost, "/v1/webhook", app.registerWebhookHandlerPost)
-	router.HandlerFunc(http.MethodGet, "/v1/webhook/:id", app.getWebhookHandler)
-	router.HandlerFunc(http.MethodPatch, "/v1/webhook/:id", app.updateWebhookHandler)
-	router.HandlerFunc(http.MethodDelete, "/v1/webhook/:id", app.deleteWebhookHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/webhooks/:id", app.listWebhooksHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/projects/:project_id/webhook/:webhook_id", app.getWebhookHandler)
+	router.HandlerFunc(http.MethodPatch, "/v1/projects/:project_id/webhook/:webhook_id", app.updateWebhookHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/projects/:project_id/webhook/:webhook_id", app.deleteWebhookHandler)
 
+	router.HandlerFunc(http.MethodGet, "/v1/project/:id/webhooks", app.listWebhooksHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/project", app.createProjectHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/project/:id", app.getProjectHandler)
 

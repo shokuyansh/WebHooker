@@ -67,7 +67,7 @@ Replace this with an actual project model.
 - [X] Create project
 - [X] Retrieve project
 - [X] Associate webhooks with projects
-- [ ] Scope webhook operations by project
+- [X] Scope webhook operations by project
 
 Target relationship:
 
