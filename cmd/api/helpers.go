@@ -17,7 +17,7 @@ type envelope map[string]any
 
 func (app *application) readIDParam(r *http.Request) (int, error) {
 	params := httprouter.ParamsFromContext(r.Context())
-	id, err := strconv.Atoi(params.ByName("id"))
+	id, err := strconv.Atoi(params.ByName("project_id"))
 	if err != nil || id < 1 {
 		return 0, errors.New("invalid id parameter")
 	}

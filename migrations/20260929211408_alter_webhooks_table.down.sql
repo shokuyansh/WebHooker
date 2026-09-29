@@ -1,0 +1,2 @@
+alter table webhooks
+drop constraint webhooks_project_id_fkey;
