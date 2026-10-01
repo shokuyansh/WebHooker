@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/shokuyansh/Webhooker/internal/data"
+	"github.com/shokuyansh/Webhooker/internal/urlguard"
 	"github.com/shokuyansh/Webhooker/internal/validator"
 )
 
@@ -26,6 +27,8 @@ func (app *application) registerWebhookHandlerPost(w http.ResponseWriter, r *htt
 		Events:      input.EventsRegistered,
 	}
 	v := validator.New()
+
+	v.Check(urlguard.ValidURL(webhook.CallbackURL), "callback_url", "must be a valid public http or https URL")
 
 	if data.ValidateWebhook(v, webhook); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
@@ -106,6 +109,8 @@ func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Requ
 	if input.EventsRegistered != nil {
 		webhook.Events = input.EventsRegistered
 	}
+	v.Check(urlguard.ValidURL(webhook.CallbackURL), "callback_url", "must be a valid public http or https URL")
+
 	if data.ValidateWebhook(v, webhook); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return

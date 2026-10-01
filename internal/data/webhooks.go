@@ -32,7 +32,6 @@ func ValidateWebhook(v *validator.Validator, webhook *WebHook) {
 	v.Check(webhook.ProjectID > 0, "project_id", "must be greater than 0")
 
 	v.Check(len(webhook.CallbackURL) != 0, "callback_url", "must be provided")
-	v.Check(validator.ValidURL(webhook.CallbackURL), "callback_url", "Not a valid url")
 
 	v.Check(webhook.Events != nil, "events", "must be provided")
 	v.Check(len(webhook.Events) >= 1, "events", "registered events should be atleast 1")

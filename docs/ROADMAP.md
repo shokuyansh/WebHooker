@@ -135,7 +135,7 @@ Tasks:
 - [ ] Configure request timeout
 - [ ] Record HTTP status code
 - [ ] Record delivery success/failure
-
+- [] Check for ErrBlockedDestination
 Suggested states:
 
 ```text
