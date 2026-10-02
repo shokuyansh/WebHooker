@@ -12,14 +12,14 @@ var (
 
 type Models struct {
 	Webhooks WebHookModel
-	Users    UserModel
 	Projects ProjectModel
+	Events   EventModel
 }
 
 func NewModels(db *sql.DB) Models {
 	return Models{
 		Webhooks: WebHookModel{DB: db},
-		Users:    UserModel{DB: db},
 		Projects: ProjectModel{DB: db},
+		Events:   EventModel{DB: db},
 	}
 }
