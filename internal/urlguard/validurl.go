@@ -75,11 +75,6 @@ func ValidURL(callback_url string) bool {
 		return false
 	}
 
-	if addr, err := netip.ParseAddr(host); err == nil {
-		// A literal address needs no lookup; judge it directly.
-		return IsPublicIP(addr)
-	}
-
 	if isBlockedHostname(host) {
 		return false
 	}
@@ -90,6 +85,12 @@ func ValidURL(callback_url string) bool {
 			return false
 		}
 	}
+
+	if addr, err := netip.ParseAddr(host); err == nil {
+		// A literal address needs no lookup; judge it directly.
+		return IsPublicIP(addr)
+	}
+
 	return true
 }
 

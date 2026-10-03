@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/shokuyansh/Webhooker/internal/data"
@@ -15,8 +17,8 @@ func (app *application) createEventHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	var input struct {
-		Type    string         `json:"type"`
-		Payload map[string]any `json:"payload"`
+		Type    string          `json:"type"`
+		Payload json.RawMessage `json:"payload"`
 	}
 
 	err = app.readJSON(w, r, &input)
@@ -26,7 +28,7 @@ func (app *application) createEventHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	event := data.Event{}
-	event.Product_ID = int64(project_id)
+	event.ProjectID = int64(project_id)
 	event.Type = input.Type
 	event.Payload = input.Payload
 
@@ -36,8 +38,23 @@ func (app *application) createEventHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = app.models.Events.INSERT(&event)
+	err = app.models.WithTransaction(func(m data.Models) error {
+		if err := m.Events.Insert(&event); err != nil {
+			return err
+		}
+		_, err := m.Webhooks.GetActiveWebhooksForEvent(event.ProjectID, event.Type)
+		if err != nil {
+			return err
+		}
+		// deliveries triggered on the hooks acquired
+		return nil
+	})
+
 	if err != nil {
+		if errors.Is(err, data.ErrNonExistentProject) {
+			app.notFoundErrorResponse(w, r)
+			return
+		}
 		app.serverErrorResponse(w, r, err)
 		return
 	}

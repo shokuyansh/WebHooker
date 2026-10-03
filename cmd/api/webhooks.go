@@ -41,6 +41,11 @@ func (app *application) registerWebhookHandlerPost(w http.ResponseWriter, r *htt
 			app.failedValidationResponse(w, r, v.Errors)
 			return
 		}
+		if errors.Is(err, data.ErrNonExistentProject) {
+			v.AddError("project_id", "this project does not exists")
+			app.failedValidationResponse(w, r, v.Errors)
+			return
+		}
 		app.serverErrorResponse(w, r, err)
 		return
 	}
@@ -97,6 +102,7 @@ func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Requ
 	var input struct {
 		CallbackUrl      *string  `json:"callback_url"`
 		EventsRegistered []string `json:"events_registered"`
+		Activated        *bool    `json:"activated"`
 	}
 	err = app.readJSON(w, r, &input)
 	if err != nil {
@@ -109,6 +115,10 @@ func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Requ
 	if input.EventsRegistered != nil {
 		webhook.Events = input.EventsRegistered
 	}
+	if input.Activated != nil {
+		webhook.Activated = *input.Activated
+	}
+
 	v.Check(urlguard.ValidURL(webhook.CallbackURL), "callback_url", "must be a valid public http or https URL")
 
 	if data.ValidateWebhook(v, webhook); !v.Valid() {

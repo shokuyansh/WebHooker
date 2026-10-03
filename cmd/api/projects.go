@@ -28,7 +28,7 @@ func (app *application) createProjectHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	err = app.models.Projects.CREATE(&project)
+	err = app.models.Projects.Create(&project)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -46,7 +46,7 @@ func (app *application) getProjectHandler(w http.ResponseWriter, r *http.Request
 		app.notFoundErrorResponse(w, r)
 		return
 	}
-	project, err := app.models.Projects.GET(int64(project_id))
+	project, err := app.models.Projects.Get(int64(project_id))
 
 	if err != nil {
 		if errors.Is(err, data.ErrRecordNotFound) {

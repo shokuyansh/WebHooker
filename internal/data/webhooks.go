@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	ErrDuplicateURL = errors.New("duplicate url")
+	ErrDuplicateURL       = errors.New("duplicate url")
+	ErrNonExistentProject = errors.New("project_id dne")
 )
 
 type WebHook struct {
@@ -25,7 +26,7 @@ type WebHook struct {
 }
 
 type WebHookModel struct {
-	DB *sql.DB
+	db Querier
 }
 
 func ValidateWebhook(v *validator.Validator, webhook *WebHook) {
@@ -42,11 +43,11 @@ func ValidateWebhook(v *validator.Validator, webhook *WebHook) {
 func (m WebHookModel) Insert(webhook *WebHook) error {
 	stmt := `Insert into webhooks(project_id,callback_url,events)
 	values($1,$2,$3)
-	returning id,created_at,version`
+	returning id,created_at,activated,version`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	err := m.DB.QueryRowContext(ctx, stmt, webhook.ProjectID, webhook.CallbackURL, pq.Array(webhook.Events)).Scan(
-		&webhook.ID, &webhook.CreatedAT, &webhook.Version)
+	err := m.db.QueryRowContext(ctx, stmt, webhook.ProjectID, webhook.CallbackURL, pq.Array(webhook.Events)).Scan(
+		&webhook.ID, &webhook.CreatedAT, &webhook.Activated, &webhook.Version)
 	if err != nil {
 		var pqErr *pq.Error
 		switch {
@@ -54,6 +55,10 @@ func (m WebHookModel) Insert(webhook *WebHook) error {
 			pqErr.Code == "23505" &&
 			pqErr.Constraint == "webhooks_callback_url_key":
 			return ErrDuplicateURL
+		case errors.As(err, &pqErr) &&
+			pqErr.Code == "23503" &&
+			pqErr.Constraint == "webhooks_project_id_fkey":
+			return ErrNonExistentProject
 		default:
 			return err
 		}
@@ -70,7 +75,7 @@ func (m WebHookModel) Get(project_id, webhook_id int) (*WebHook, error) {
 	var webhook WebHook
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	err := m.DB.QueryRowContext(ctx, query, project_id, webhook_id).Scan(
+	err := m.db.QueryRowContext(ctx, query, project_id, webhook_id).Scan(
 		&webhook.ID,
 		&webhook.ProjectID,
 		&webhook.CallbackURL,
@@ -90,14 +95,14 @@ func (m WebHookModel) Get(project_id, webhook_id int) (*WebHook, error) {
 
 func (m WebHookModel) Update(webhook *WebHook) error {
 	query := `update webhooks set
-	callback_url=$1,events=$2,version=version+1
-	where id=$3 and project_id=$4 and version=$5
+	callback_url=$1,events=$2,activated=$3,version=version+1
+	where id=$4 and project_id=$5 and version=$6
 	returning version
 	`
-	args := []any{webhook.CallbackURL, pq.Array(webhook.Events), webhook.ID, webhook.ProjectID, webhook.Version}
+	args := []any{webhook.CallbackURL, pq.Array(webhook.Events), webhook.Activated, webhook.ID, webhook.ProjectID, webhook.Version}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&webhook.Version)
+	err := m.db.QueryRowContext(ctx, query, args...).Scan(&webhook.Version)
 	if err != nil {
 		var pqErr *pq.Error
 		switch {
@@ -122,7 +127,7 @@ func (m WebHookModel) Delete(project_id, webhook_id int64) error {
 	where id=$1 and project_id=$2`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	result, err := m.DB.ExecContext(ctx, query, webhook_id, project_id)
+	result, err := m.db.ExecContext(ctx, query, webhook_id, project_id)
 	if err != nil {
 		return err
 	}
@@ -143,7 +148,7 @@ func (m WebHookModel) GetAllForProject(project_id int64) ([]*WebHook, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	res, err := m.DB.QueryContext(ctx, query, project_id)
+	res, err := m.db.QueryContext(ctx, query, project_id)
 
 	if err != nil {
 		return nil, err
@@ -171,5 +176,43 @@ func (m WebHookModel) GetAllForProject(project_id int64) ([]*WebHook, error) {
 	if err = res.Err(); err != nil {
 		return nil, err
 	}
-	return results, err
+	return results, nil
+}
+
+func (m WebHookModel) GetActiveWebhooksForEvent(project_id int64, eventType string) ([]*WebHook, error) {
+	query := `select id,project_id,callback_url,events,activated,created_at,version from webhooks
+	where project_id=$1 and activated=true and events && $2`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	res, err := m.db.QueryContext(ctx, query, project_id, pq.Array([]string{eventType}))
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Close()
+
+	var results []*WebHook
+	for res.Next() {
+		var webhook WebHook
+		err := res.Scan(
+			&webhook.ID,
+			&webhook.ProjectID,
+			&webhook.CallbackURL,
+			pq.Array(&webhook.Events),
+			&webhook.Activated,
+			&webhook.CreatedAT,
+			&webhook.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, &webhook)
+	}
+	if err = res.Err(); err != nil {
+		return nil, err
+	}
+	return results, nil
 }

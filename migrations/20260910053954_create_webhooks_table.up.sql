@@ -1,9 +1,11 @@
 create table if not exists webhooks(
     id bigserial PRIMARY KEY,
-    project_id integer not null,
+    project_id bigint not null,
     callback_url text unique not null,
     events text[] not null,
-    activated bool not null DEFAULT false,
+    activated bool not null DEFAULT true,
     created_at timestamp(0) with time zone not null DEFAULT NOW(),
     version integer not null DEFAULT 1
 );
+
+create index webhooks_events_gin_index on webhooks using GIN(events);

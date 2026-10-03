@@ -101,12 +101,12 @@ Example:
 
 Tasks:
 
-- [ ] Create event model
-- [ ] Create `events` table
-- [ ] Implement `POST /v1/projects/:id/events`
-- [ ] Validate event type
-- [ ] Validate payload
-- [ ] Store event
+- [X] Create event model
+- [X] Create `events` table
+- [X] Implement `POST /v1/projects/:id/events`
+- [X] Validate event type
+- [X] Validate payload
+- [X] Store event
 - [ ] Find active webhooks subscribed to the event type
 
 ---

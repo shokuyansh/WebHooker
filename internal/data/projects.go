@@ -10,20 +10,20 @@ import (
 )
 
 type Project struct {
-	Project_ID int64     `json:"project_id"`
-	Name       string    `json:"name"`
-	Created_AT time.Time `json:"created_at"`
+	ProjectID int64     `json:"project_id"`
+	Name      string    `json:"name"`
+	CreatedAT time.Time `json:"created_at"`
 }
 
 type ProjectModel struct {
-	DB *sql.DB
+	db Querier
 }
 
 func ValidateProject(v *validator.Validator, project Project) {
 	v.Check(len(project.Name) != 0, "name", "must be provided")
 }
 
-func (m ProjectModel) CREATE(project *Project) error {
+func (m ProjectModel) Create(project *Project) error {
 	query := `insert into projects(name) 
 	values($1)
 	returning project_id,created_at`
@@ -32,7 +32,7 @@ func (m ProjectModel) CREATE(project *Project) error {
 
 	defer cancel()
 
-	err := m.DB.QueryRowContext(ctx, query, project.Name).Scan(&project.Project_ID, &project.Created_AT)
+	err := m.db.QueryRowContext(ctx, query, project.Name).Scan(&project.ProjectID, &project.CreatedAT)
 
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func (m ProjectModel) CREATE(project *Project) error {
 	return nil
 }
 
-func (m ProjectModel) GET(project_id int64) (*Project, error) {
+func (m ProjectModel) Get(project_id int64) (*Project, error) {
 	query := `select project_id,name,created_at from projects
 	where project_id=$1`
 
@@ -49,7 +49,7 @@ func (m ProjectModel) GET(project_id int64) (*Project, error) {
 
 	defer cancel()
 
-	err := m.DB.QueryRowContext(ctx, query, project_id).Scan(&project.Project_ID, &project.Name, &project.Created_AT)
+	err := m.db.QueryRowContext(ctx, query, project_id).Scan(&project.ProjectID, &project.Name, &project.CreatedAT)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrRecordNotFound
