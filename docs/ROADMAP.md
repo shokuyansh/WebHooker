@@ -107,7 +107,7 @@ Tasks:
 - [X] Validate event type
 - [X] Validate payload
 - [X] Store event
-- [ ] Find active webhooks subscribed to the event type
+- [X] Find active webhooks subscribed to the event type
 
 ---
 
@@ -127,9 +127,9 @@ Event
 
 Tasks:
 
-- [ ] Create `deliveries` table
-- [ ] Create delivery model
-- [ ] Generate delivery for each matching webhook
+- [X] Create `deliveries` table
+- [X] Create delivery model
+- [X] Generate delivery for each matching webhook
 - [ ] Send HTTP POST request to callback URL
 - [ ] Send event payload as JSON
 - [ ] Configure request timeout

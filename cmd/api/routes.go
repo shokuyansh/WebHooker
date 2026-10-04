@@ -24,5 +24,7 @@ func (app *application) routes() http.Handler {
 
 	router.HandlerFunc(http.MethodPost, "/v1/projects/:project_id/events", app.createEventHandler)
 
+	router.HandlerFunc(http.MethodGet, "/v1/deliveries", app.listAllDeliveries)
+
 	return app.recoverPanic(router)
 }

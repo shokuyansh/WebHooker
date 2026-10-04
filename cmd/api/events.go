@@ -42,11 +42,15 @@ func (app *application) createEventHandler(w http.ResponseWriter, r *http.Reques
 		if err := m.Events.Insert(&event); err != nil {
 			return err
 		}
-		_, err := m.Webhooks.GetActiveWebhooksForEvent(event.ProjectID, event.Type)
+		hooks, err := m.Webhooks.GetActiveWebhooksForEvent(event.ProjectID, event.Type)
 		if err != nil {
 			return err
 		}
 		// deliveries triggered on the hooks acquired
+		err = m.Deliveries.BulkInsert(hooks, event)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 

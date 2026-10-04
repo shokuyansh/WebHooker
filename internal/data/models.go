@@ -21,18 +21,20 @@ type Querier interface {
 }
 
 type Models struct {
-	Webhooks WebHookModel
-	Projects ProjectModel
-	Events   EventModel
-	pool     *sql.DB
+	Webhooks   WebHookModel
+	Projects   ProjectModel
+	Events     EventModel
+	Deliveries DeliveryModel
+	pool       *sql.DB
 }
 
 func NewModels(db *sql.DB) Models {
 	return Models{
-		Webhooks: WebHookModel{db: db},
-		Projects: ProjectModel{db: db},
-		Events:   EventModel{db: db},
-		pool:     db,
+		Webhooks:   WebHookModel{db: db},
+		Projects:   ProjectModel{db: db},
+		Events:     EventModel{db: db},
+		Deliveries: DeliveryModel{db: db},
+		pool:       db,
 	}
 }
 
@@ -49,9 +51,10 @@ func (m Models) WithTransaction(fn func(Models) error) error {
 	defer tx.Rollback()
 
 	txModels := Models{
-		Webhooks: WebHookModel{db: tx},
-		Projects: ProjectModel{db: tx},
-		Events:   EventModel{db: tx},
+		Webhooks:   WebHookModel{db: tx},
+		Projects:   ProjectModel{db: tx},
+		Events:     EventModel{db: tx},
+		Deliveries: DeliveryModel{db: tx},
 	}
 
 	if err = fn(txModels); err != nil {
