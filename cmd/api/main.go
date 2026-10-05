@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/shokuyansh/Webhooker/internal/data"
@@ -30,6 +31,7 @@ type application struct {
 	config Config
 	logger *slog.Logger
 	models data.Models
+	wg     sync.WaitGroup
 }
 
 func main() {
@@ -56,6 +58,17 @@ func main() {
 		logger: logger,
 		models: data.NewModels(db),
 	}
+
+	workerCtx, stopWorker := context.WithCancel(context.Background())
+
+	defer func() {
+		stopWorker()
+		app.wg.Wait()
+	}()
+
+	app.background(func() {
+		app.runDeliveryWorker(workerCtx)
+	})
 
 	srv := http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),

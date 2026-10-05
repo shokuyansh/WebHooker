@@ -59,3 +59,28 @@ func (m EventModel) Insert(event *Event) error {
 	}
 	return nil
 }
+
+func (m EventModel) Get(id int64) (*Event, error) {
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+	query := `select id,project_id,type,payload,created_at from events
+	where id=$1`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var event Event
+
+	err := m.db.QueryRowContext(ctx, query, id).Scan(
+		&event.ID,
+		&event.ProjectID,
+		&event.Type,
+		&event.Payload,
+		&event.CreatedAT,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &event, nil
+}
