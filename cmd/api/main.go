@@ -4,9 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -28,10 +26,11 @@ type Config struct {
 }
 
 type application struct {
-	config Config
-	logger *slog.Logger
-	models data.Models
-	wg     sync.WaitGroup
+	config       Config
+	logger       *slog.Logger
+	models       data.Models
+	wg           sync.WaitGroup
+	cancelWorker context.CancelFunc
 }
 
 func main() {
@@ -60,6 +59,7 @@ func main() {
 	}
 
 	workerCtx, stopWorker := context.WithCancel(context.Background())
+	app.cancelWorker = stopWorker
 
 	defer func() {
 		stopWorker()
@@ -69,21 +69,10 @@ func main() {
 	app.background(func() {
 		app.runDeliveryWorker(workerCtx)
 	})
-
-	srv := http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.port),
-		Handler:      app.routes(),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
-	}
-
-	logger.Info("Starting server", "addr", srv.Addr, "environment", cfg.env)
-	err = srv.ListenAndServe()
+	err = app.serve()
 	if err != nil {
 		logger.Error(err.Error())
-		return
+		os.Exit(1)
 	}
 }
 
