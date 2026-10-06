@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -22,17 +24,27 @@ func (app *application) listAllDeliveries(w http.ResponseWriter, r *http.Request
 	}
 }
 
+var client = &http.Client{
+	Transport: &http.Transport{
+		DialContext: urlguard.Dialer(2 * time.Second).DialContext,
+	},
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
 func (app *application) performDelivery(delivery *data.Delivery, ctx context.Context) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	event, err := app.models.Events.Get(delivery.EventID)
 	if err != nil {
-		app.logger.Error(err.Error())
-		return err
+		return fmt.Errorf("load event: %w", err)
 	}
 
 	webhook, err := app.models.Webhooks.Get(int(event.ProjectID), int(delivery.WebHookID))
 	if err != nil {
-		app.logger.Error(err.Error())
-		return err
+		return fmt.Errorf("load webhook: %w", err)
 	}
 
 	now := time.Now().UTC()
@@ -43,24 +55,31 @@ func (app *application) performDelivery(delivery *data.Delivery, ctx context.Con
 
 	req, err := http.NewRequestWithContext(timeCtx, http.MethodPost, webhook.CallbackURL, bytes.NewBuffer(event.Payload))
 	if err != nil {
-		app.logger.Error(err.Error())
-		return err
+		return fmt.Errorf("request error: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			DialContext: urlguard.Dialer(2 * time.Second).DialContext,
-		},
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
 	resp, err := client.Do(req)
 	if err != nil {
-		app.logger.Error(err.Error())
+		switch {
+		case errors.Is(err, urlguard.ErrBlockedDestination):
+			app.logger.Error("delivery processing failed",
+				"delivery_id", delivery.ID,
+				"webhook_id", delivery.WebHookID,
+				"event_id", delivery.EventID,
+				"error", err,
+			)
+		case ctx.Err() != nil:
+			return ctx.Err()
+		default:
+			app.logger.Error("delivery request failed",
+				"delivery_id", delivery.ID,
+				"webhook_id", delivery.WebHookID,
+				"event_id", delivery.EventID,
+				"error", err,
+			)
+		}
 		delivery.ResponseStatus = nil
 		delivery.Status = "FAILED"
 	} else {
@@ -68,6 +87,10 @@ func (app *application) performDelivery(delivery *data.Delivery, ctx context.Con
 			delivery.Status = "SUCCESS"
 			delivery.ResponseStatus = &resp.StatusCode
 		} else {
+			app.logger.Warn("delivery response non-2xx:", "delivery_id", delivery.ID,
+				"webhook_id", delivery.WebHookID,
+				"event_id", delivery.EventID,
+				"response_status", resp.StatusCode)
 			delivery.Status = "FAILED"
 			delivery.ResponseStatus = &resp.StatusCode
 		}
@@ -75,8 +98,7 @@ func (app *application) performDelivery(delivery *data.Delivery, ctx context.Con
 	}
 	err = app.models.Deliveries.Update(delivery)
 	if err != nil {
-		app.logger.Error(err.Error())
-		return err
+		return fmt.Errorf("update delivery: %w", err)
 	}
 	return nil
 }
@@ -84,13 +106,20 @@ func (app *application) performDelivery(delivery *data.Delivery, ctx context.Con
 func (app *application) processPendingDeliveries(ctx context.Context) error {
 	pendingDeliveries, err := app.models.Deliveries.PendingDeliveries()
 	if err != nil {
-		app.logger.Error(err.Error())
 		return err
 	}
 	for _, delivery := range pendingDeliveries {
 		err := app.performDelivery(delivery, ctx)
 		if err != nil {
-			app.logger.Error(err.Error())
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			app.logger.Error("delivery processing failed",
+				"delivery_id", delivery.ID,
+				"webhook_id", delivery.WebHookID,
+				"event_id", delivery.EventID,
+				"error", err,
+			)
 		}
 	}
 	return nil

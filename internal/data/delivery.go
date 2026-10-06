@@ -124,7 +124,8 @@ func (m DeliveryModel) ListAll() ([]*Delivery, error) {
 
 func (m DeliveryModel) PendingDeliveries() ([]*Delivery, error) {
 	query := `select id,event_id,webhook_id,status,attempt_count,response_status,next_attempt_at,last_attempt_at,created_at
-	from deliveries where status='PENDING' and next_attempt_at<NOW()`
+	from deliveries where status='PENDING' and next_attempt_at<NOW()
+	order by next_attempt_at,id limit 50`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 

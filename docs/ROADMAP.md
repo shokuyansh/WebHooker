@@ -35,7 +35,7 @@ Status: Mostly Complete
 - [x] Validate incoming JSON
 - [x] Prevent duplicate callback URLs
 - [x] Optimistic locking using version field
-- [ ] List webhooks for a project
+- [X] List webhooks for a project
 
 ---
 
@@ -51,8 +51,8 @@ Status: In Progress
 - [x] Reject multicast/unspecified addresses
 - [x] Add DNS timeout
 - [x] Prevent automatic redirects
-- [ ] Protect actual webhook delivery from DNS rebinding
-- [ ] Apply the same validation when callback URL is updated
+- [X] Protect actual webhook delivery from DNS rebinding
+- [X] Apply the same validation when callback URL is updated
 
 ---
 
@@ -130,12 +130,12 @@ Tasks:
 - [X] Create `deliveries` table
 - [X] Create delivery model
 - [X] Generate delivery for each matching webhook
-- [ ] Send HTTP POST request to callback URL
-- [ ] Send event payload as JSON
-- [ ] Configure request timeout
-- [ ] Record HTTP status code
-- [ ] Record delivery success/failure
-- [] Check for ErrBlockedDestination
+- [X] Send HTTP POST request to callback URL
+- [X] Send event payload as JSON
+- [X] Configure request timeout
+- [X] Record HTTP status code
+- [X] Record delivery success/failure
+- [X] Check for ErrBlockedDestination
 Suggested states:
 
 ```text
