@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"net/http"
 
@@ -34,6 +36,13 @@ func (app *application) registerWebhookHandlerPost(w http.ResponseWriter, r *htt
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
+	secretKey := make([]byte, 32)
+	_, err = rand.Read(secretKey)
+	if err != nil || len(secretKey) != 32 {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	webhook.SigningSecret = secretKey
 	err = app.models.Webhooks.Insert(webhook)
 	if err != nil {
 		if errors.Is(err, data.ErrDuplicateURL) {
@@ -49,7 +58,7 @@ func (app *application) registerWebhookHandlerPost(w http.ResponseWriter, r *htt
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-	err = app.writeJSON(w, envelope{"webhook": webhook}, http.StatusCreated, nil)
+	err = app.writeJSON(w, envelope{"webhook": webhook, "signing_secret(ONE TIME)": "whsec_" + base64.StdEncoding.EncodeToString(secretKey)}, http.StatusCreated, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

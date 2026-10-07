@@ -3,9 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/shokuyansh/Webhooker/internal/data"
@@ -33,6 +37,15 @@ var client = &http.Client{
 	},
 }
 
+func signMessage(secret []byte, message []byte) string {
+	h := hmac.New(sha256.New, secret)
+	h.Write(message)
+
+	signature := h.Sum(nil)
+
+	return base64.StdEncoding.EncodeToString(signature)
+}
+
 func (app *application) performDelivery(delivery *data.Delivery, ctx context.Context) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -42,7 +55,7 @@ func (app *application) performDelivery(delivery *data.Delivery, ctx context.Con
 		return fmt.Errorf("load event: %w", err)
 	}
 
-	webhook, err := app.models.Webhooks.Get(int(event.ProjectID), int(delivery.WebHookID))
+	webhook, err := app.models.Webhooks.GetWithSecret(int(event.ProjectID), int(delivery.WebHookID))
 	if err != nil {
 		return fmt.Errorf("load webhook: %w", err)
 	}
@@ -57,8 +70,16 @@ func (app *application) performDelivery(delivery *data.Delivery, ctx context.Con
 	if err != nil {
 		return fmt.Errorf("request error: %w", err)
 	}
+	delivery_id := strconv.FormatInt(delivery.ID, 10)
+	timestamp := strconv.FormatInt(now.Unix(), 10)
+	message := delivery_id + "." + timestamp + "." + string(event.Payload)
+	signature := signMessage(webhook.SigningSecret, []byte(message))
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("webhook-id", delivery_id)
+	req.Header.Set("webhook-timestamp", timestamp)
+	req.Header.Set("webhook-signature", "v1,"+signature)
 
 	resp, err := client.Do(req)
 	if err != nil {

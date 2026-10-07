@@ -16,13 +16,14 @@ var (
 )
 
 type WebHook struct {
-	ID          int64     `json:"id"`
-	ProjectID   int64     `json:"project_id"`
-	CallbackURL string    `json:"callback_url"`
-	Events      []string  `json:"events"`
-	Activated   bool      `json:"activated"`
-	CreatedAT   time.Time `json:"-"`
-	Version     int64     `json:"version"`
+	ID            int64     `json:"id"`
+	ProjectID     int64     `json:"project_id"`
+	CallbackURL   string    `json:"callback_url"`
+	Events        []string  `json:"events"`
+	SigningSecret []byte    `json:"-"`
+	Activated     bool      `json:"activated"`
+	CreatedAT     time.Time `json:"-"`
+	Version       int64     `json:"version"`
 }
 
 type WebHookModel struct {
@@ -41,12 +42,13 @@ func ValidateWebhook(v *validator.Validator, webhook *WebHook) {
 }
 
 func (m WebHookModel) Insert(webhook *WebHook) error {
-	stmt := `Insert into webhooks(project_id,callback_url,events)
-	values($1,$2,$3)
+	stmt := `Insert into webhooks(project_id,callback_url,events,signing_secret)
+	values($1,$2,$3,$4)
 	returning id,created_at,activated,version`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	err := m.db.QueryRowContext(ctx, stmt, webhook.ProjectID, webhook.CallbackURL, pq.Array(webhook.Events)).Scan(
+	args := []any{webhook.ProjectID, webhook.CallbackURL, pq.Array(webhook.Events), webhook.SigningSecret}
+	err := m.db.QueryRowContext(ctx, stmt, args...).Scan(
 		&webhook.ID, &webhook.CreatedAT, &webhook.Activated, &webhook.Version)
 	if err != nil {
 		var pqErr *pq.Error
@@ -80,6 +82,34 @@ func (m WebHookModel) Get(project_id, webhook_id int) (*WebHook, error) {
 		&webhook.ProjectID,
 		&webhook.CallbackURL,
 		pq.Array(&webhook.Events),
+		&webhook.Activated,
+		&webhook.CreatedAT,
+		&webhook.Version,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrRecordNotFound
+		}
+		return nil, err
+	}
+	return &webhook, nil
+}
+
+func (m WebHookModel) GetWithSecret(project_id, webhook_id int) (*WebHook, error) {
+	if project_id < 1 || webhook_id < 1 {
+		return nil, ErrRecordNotFound
+	}
+	query := `select id,project_id,callback_url,events,signing_secret,activated,created_at,version from webhooks
+	where project_id=$1 and id = $2`
+	var webhook WebHook
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := m.db.QueryRowContext(ctx, query, project_id, webhook_id).Scan(
+		&webhook.ID,
+		&webhook.ProjectID,
+		&webhook.CallbackURL,
+		pq.Array(&webhook.Events),
+		&webhook.SigningSecret,
 		&webhook.Activated,
 		&webhook.CreatedAT,
 		&webhook.Version,
