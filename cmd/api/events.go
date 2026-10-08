@@ -10,12 +10,12 @@ import (
 )
 
 func (app *application) createEventHandler(w http.ResponseWriter, r *http.Request) {
-	project_id, err := app.readIDParam(r)
+	ids, err := app.readIDParams(r, "id")
 	if err != nil {
 		app.badRequestErrorResponse(w, r, err)
 		return
 	}
-
+	project_id := ids[0]
 	var input struct {
 		Type    string          `json:"type"`
 		Payload json.RawMessage `json:"payload"`

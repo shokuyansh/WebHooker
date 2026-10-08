@@ -41,11 +41,12 @@ func (app *application) createProjectHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (app *application) getProjectHandler(w http.ResponseWriter, r *http.Request) {
-	project_id, err := app.readIDParam(r)
+	ids, err := app.readIDParams(r, "id")
 	if err != nil {
 		app.notFoundErrorResponse(w, r)
 		return
 	}
+	project_id := ids[0]
 	project, err := app.models.Projects.Get(int64(project_id))
 
 	if err != nil {

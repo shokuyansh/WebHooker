@@ -19,6 +19,41 @@ import (
 	"github.com/shokuyansh/Webhooker/internal/urlguard"
 )
 
+func (app *application) getDelivery(w http.ResponseWriter, r *http.Request) {
+	ids, err := app.readIDParams(r, "id", "webhook_id", "delivery_id")
+	if err != nil {
+		app.notFoundErrorResponse(w, r)
+		return
+	}
+	project_id, webhook_id, delivery_id := ids[0], ids[1], ids[2]
+	_, err = app.models.Webhooks.Get(project_id, webhook_id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundErrorResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	delivery, err := app.models.Deliveries.Get(int64(webhook_id), int64(delivery_id))
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundErrorResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, envelope{"delivery": delivery}, http.StatusOK, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+}
+
 func (app *application) listAllDeliveries(w http.ResponseWriter, r *http.Request) {
 	deliveries, err := app.models.Deliveries.ListAll()
 	if err != nil {
@@ -28,6 +63,41 @@ func (app *application) listAllDeliveries(w http.ResponseWriter, r *http.Request
 	err = app.writeJSON(w, envelope{"deliveries": deliveries}, http.StatusOK, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) listDeliveriesForWebhook(w http.ResponseWriter, r *http.Request) {
+	ids, err := app.readIDParams(r, "id", "webhook_id")
+	if err != nil {
+		app.notFoundErrorResponse(w, r)
+		return
+	}
+	project_id, webhook_id := ids[0], ids[1]
+	_, err = app.models.Webhooks.Get(project_id, webhook_id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundErrorResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	deliveries, err := app.models.Deliveries.DeliveriesForWebhook(int64(webhook_id))
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundErrorResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, envelope{"deliveries": deliveries}, http.StatusOK, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
 	}
 }
 

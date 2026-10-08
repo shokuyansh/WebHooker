@@ -200,13 +200,13 @@ Do not introduce Kafka, RabbitMQ, or Redis unless the architecture actually requ
 
 Allow clients to inspect what happened to their webhooks.
 
-- [ ] List deliveries for a webhook
-- [ ] Retrieve individual delivery
-- [ ] Show delivery status
-- [ ] Show attempt count
-- [ ] Show response status
-- [ ] Show last attempt time
-- [ ] Show next retry time
+- [X] List deliveries for a webhook
+- [X] Retrieve individual delivery
+- [X] Show delivery status
+- [X] Show attempt count
+- [X] Show response status
+- [X] Show last attempt time
+- [X] Show next retry time
 
 Possible endpoints:
 

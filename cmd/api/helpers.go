@@ -15,26 +15,18 @@ import (
 
 type envelope map[string]any
 
-func (app *application) readIDParam(r *http.Request) (int, error) {
+func (app *application) readIDParams(r *http.Request, names ...string) ([]int, error) {
 	params := httprouter.ParamsFromContext(r.Context())
-	id, err := strconv.Atoi(params.ByName("project_id"))
-	if err != nil || id < 1 {
-		return 0, errors.New("invalid id parameter")
+	ids := make([]int, len(names))
+	for i, name := range names {
+		id, err := strconv.Atoi(params.ByName(name))
+		if err != nil || id < 1 {
+			return nil, fmt.Errorf("invalid %s parameter", name)
+		}
+		ids[i] = id
 	}
-	return id, nil
-}
 
-func (app *application) readIDParams(r *http.Request) (int, int, error) {
-	params := httprouter.ParamsFromContext(r.Context())
-	project_id, err := strconv.Atoi(params.ByName("project_id"))
-	if err != nil || project_id < 1 {
-		return 0, 0, errors.New("invalid id parameter")
-	}
-	webhook_id, err := strconv.Atoi(params.ByName("webhook_id"))
-	if err != nil || webhook_id < 1 {
-		return 0, 0, errors.New("invalid id parameter")
-	}
-	return project_id, webhook_id, nil
+	return ids, nil
 }
 
 func (app *application) writeJSON(w http.ResponseWriter, msg any, statusCode int, header http.Header) error {

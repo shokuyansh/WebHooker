@@ -65,11 +65,12 @@ func (app *application) registerWebhookHandlerPost(w http.ResponseWriter, r *htt
 }
 
 func (app *application) getWebhookHandler(w http.ResponseWriter, r *http.Request) {
-	project_id, webhook_id, err := app.readIDParams(r)
+	ids, err := app.readIDParams(r, "id", "webhook_id")
 	if err != nil {
 		app.notFoundErrorResponse(w, r)
 		return
 	}
+	project_id, webhook_id := ids[0], ids[1]
 	webhook, err := app.models.Webhooks.Get(project_id, webhook_id)
 	if err != nil {
 		switch {
@@ -87,11 +88,12 @@ func (app *application) getWebhookHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Request) {
-	project_id, webhook_id, err := app.readIDParams(r)
+	ids, err := app.readIDParams(r, "id", "webhook_id")
 	if err != nil {
 		app.notFoundErrorResponse(w, r)
 		return
 	}
+	project_id, webhook_id := ids[0], ids[1]
 	v := validator.New()
 
 	webhook, err := app.models.Webhooks.Get(project_id, webhook_id)
@@ -154,11 +156,12 @@ func (app *application) updateWebhookHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (app *application) deleteWebhookHandler(w http.ResponseWriter, r *http.Request) {
-	project_id, webhook_id, err := app.readIDParams(r)
+	ids, err := app.readIDParams(r, "id", "webhook_id")
 	if err != nil {
 		app.notFoundErrorResponse(w, r)
 		return
 	}
+	project_id, webhook_id := ids[0], ids[1]
 	err = app.models.Webhooks.Delete(int64(project_id), int64(webhook_id))
 	if err != nil {
 		switch {
@@ -176,12 +179,12 @@ func (app *application) deleteWebhookHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (app *application) listWebhooksHandler(w http.ResponseWriter, r *http.Request) {
-	project_id, err := app.readIDParam(r)
+	ids, err := app.readIDParams(r, "id")
 	if err != nil {
 		app.notFoundErrorResponse(w, r)
 		return
 	}
-
+	project_id := ids[0]
 	webhooks, err := app.models.Webhooks.GetAllForProject(int64(project_id))
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
