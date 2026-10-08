@@ -151,13 +151,13 @@ retrying
 
 Allow webhook consumers to verify that requests actually came from WebHooker.
 
-- [ ] Generate webhook signing secret
-- [ ] Store secret securely
-- [ ] Sign payload using HMAC-SHA256
-- [ ] Add signature header
-- [ ] Add timestamp header
-- [ ] Document signature verification
-- [ ] Add basic replay protection strategy
+- [X] Generate webhook signing secret
+- [X] Store secret securely
+- [X] Sign payload using HMAC-SHA256
+- [X] Add signature header
+- [X] Add timestamp header
+- [X] Document signature verification
+- [X] Add basic replay protection strategy
 
 Example headers:
 
@@ -173,12 +173,12 @@ X-Webhook-Delivery-ID
 
 Failed webhook requests should not immediately be discarded.
 
-- [ ] Track delivery attempts
-- [ ] Define maximum retry count
-- [ ] Implement exponential backoff
-- [ ] Store `next_attempt_at`
-- [ ] Retry retryable failures
-- [ ] Mark permanently failed deliveries
+- [X] Track delivery attempts
+- [X] Define maximum retry count
+- [X] Implement exponential backoff
+- [X] Store `next_attempt_at`
+- [X] Retry retryable failures
+- [X] Mark permanently failed deliveries
 
 Example strategy:
 

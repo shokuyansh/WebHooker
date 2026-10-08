@@ -47,14 +47,14 @@ func (m DeliveryModel) Create(delivery *Delivery) error {
 
 func (m DeliveryModel) Update(delivery *Delivery) error {
 	query := `update deliveries set
-	status=$1,attempt_count=attempt_count+1,response_status=$2,last_attempt_at=$3
-	where id=$4`
+	status=$1,attempt_count=attempt_count+1,response_status=$2,next_attempt_at=$3,last_attempt_at=$4
+	where id=$5`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 
 	defer cancel()
 
-	args := []any{delivery.Status, delivery.ResponseStatus, delivery.LastAttemptAt, delivery.ID}
+	args := []any{delivery.Status, delivery.ResponseStatus, delivery.NextAttemptAt, delivery.LastAttemptAt, delivery.ID}
 	res, err := m.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func (m DeliveryModel) ListAll() ([]*Delivery, error) {
 
 func (m DeliveryModel) PendingDeliveries() ([]*Delivery, error) {
 	query := `select id,event_id,webhook_id,status,attempt_count,response_status,next_attempt_at,last_attempt_at,created_at
-	from deliveries where status='PENDING' and next_attempt_at<NOW()
+	from deliveries where status in ('PENDING','RETRYING') and next_attempt_at<NOW()
 	order by next_attempt_at,id limit 50`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

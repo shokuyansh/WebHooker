@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
+	"math/big"
 	"net/http"
 	"strconv"
 	"time"
@@ -44,6 +47,19 @@ func signMessage(secret []byte, message []byte) string {
 	signature := h.Sum(nil)
 
 	return base64.StdEncoding.EncodeToString(signature)
+}
+
+func exponentialBackoffScheduler(attempCount int64) time.Time {
+	baseInterval := 5 * time.Minute
+	exponent_result := math.Pow(2, float64(attempCount))
+	backoff := baseInterval.Seconds() * exponent_result
+
+	randomBig := big.NewInt(int64(backoff))
+	jitter_backoff, err := rand.Int(rand.Reader, randomBig)
+	if err != nil {
+		return time.Now().Add(time.Duration(backoff) * time.Second)
+	}
+	return time.Now().Add(time.Duration(jitter_backoff.Int64()) * time.Second)
 }
 
 func (app *application) performDelivery(delivery *data.Delivery, ctx context.Context) error {
@@ -83,17 +99,21 @@ func (app *application) performDelivery(delivery *data.Delivery, ctx context.Con
 
 	resp, err := client.Do(req)
 	if err != nil {
+		attempt := delivery.AttemptCount + 1
 		switch {
-		case errors.Is(err, urlguard.ErrBlockedDestination):
+		case ctx.Err() != nil:
+			return ctx.Err()
+		case errors.Is(err, urlguard.ErrBlockedDestination) || attempt >= 5:
+			delivery.Status = "FAILED"
 			app.logger.Error("delivery processing failed",
 				"delivery_id", delivery.ID,
 				"webhook_id", delivery.WebHookID,
 				"event_id", delivery.EventID,
 				"error", err,
 			)
-		case ctx.Err() != nil:
-			return ctx.Err()
 		default:
+			delivery.Status = "RETRYING"
+			delivery.NextAttemptAt = exponentialBackoffScheduler(attempt - 1)
 			app.logger.Error("delivery request failed",
 				"delivery_id", delivery.ID,
 				"webhook_id", delivery.WebHookID,
@@ -102,17 +122,24 @@ func (app *application) performDelivery(delivery *data.Delivery, ctx context.Con
 			)
 		}
 		delivery.ResponseStatus = nil
-		delivery.Status = "FAILED"
 	} else {
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			delivery.Status = "SUCCESS"
 			delivery.ResponseStatus = &resp.StatusCode
 		} else {
+			attempt := delivery.AttemptCount + 1
+			retryable := resp.StatusCode == 429 || resp.StatusCode == 408 || resp.StatusCode >= 500 && resp.StatusCode < 600
+			if attempt < 5 && retryable {
+				delivery.Status = "RETRYING"
+				delivery.NextAttemptAt = exponentialBackoffScheduler(attempt - 1)
+			} else {
+				delivery.Status = "FAILED"
+			}
 			app.logger.Warn("delivery response non-2xx:", "delivery_id", delivery.ID,
 				"webhook_id", delivery.WebHookID,
 				"event_id", delivery.EventID,
 				"response_status", resp.StatusCode)
-			delivery.Status = "FAILED"
+
 			delivery.ResponseStatus = &resp.StatusCode
 		}
 		resp.Body.Close()
