@@ -221,11 +221,11 @@ GET /v1/deliveries/:id
 
 Before declaring the MVP complete:
 
-- [ ] Graceful server shutdown
-- [ ] Structured delivery logging
-- [ ] Request body size limits
-- [ ] Rate limiting where necessary
-- [ ] Database indexes
+- [X] Graceful server shutdown
+- [X] Structured delivery logging
+- [X] Request body size limits
+- [X] Rate limiting where necessary
+- [X] Database indexes
 - [ ] Unit tests
 - [ ] Integration tests
 - [ ] Delivery/retry tests

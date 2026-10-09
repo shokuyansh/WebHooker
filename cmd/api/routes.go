@@ -28,5 +28,5 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/projects/:id/webhooks/:webhook_id/deliveries/:delivery_id", app.getDelivery)
 	router.HandlerFunc(http.MethodGet, "/v1/projects/:id/webhooks/:webhook_id/deliveries", app.listDeliveriesForWebhook)
 
-	return app.recoverPanic(router)
+	return app.recoverPanic(app.rateLimit(router))
 }
