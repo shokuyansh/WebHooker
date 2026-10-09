@@ -226,9 +226,9 @@ Before declaring the MVP complete:
 - [X] Request body size limits
 - [X] Rate limiting where necessary
 - [X] Database indexes
-- [ ] Unit tests
-- [ ] Integration tests
-- [ ] Delivery/retry tests
+- [X] Unit tests
+- [X] Integration tests
+- [X] Delivery/retry tests
 - [ ] Deploy publicly
 - [ ] Improve API documentation
 

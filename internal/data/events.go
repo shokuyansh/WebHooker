@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"time"
@@ -52,7 +53,7 @@ func (m EventModel) Insert(event *Event) error {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) &&
 			pqErr.Code == "23503" &&
-			pqErr.Constraint == "webhooks_project_id_fkey" {
+			pqErr.Constraint == "events_project_id_fkey" {
 			return ErrNonExistentProject
 		}
 		return err
@@ -80,6 +81,9 @@ func (m EventModel) Get(id int64) (*Event, error) {
 		&event.CreatedAT,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrRecordNotFound
+		}
 		return nil, err
 	}
 	return &event, nil

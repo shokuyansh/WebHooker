@@ -40,7 +40,10 @@ func (app *application) writeJSON(w http.ResponseWriter, msg any, statusCode int
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	w.Write(jsonValue)
+	_, err = w.Write(jsonValue)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
